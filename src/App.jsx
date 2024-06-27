@@ -1,42 +1,85 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Archivo, Equis } from "./assets/Figuras.jsx";
+import { collection, getDocs, doc, addDoc, deleteDoc } from "firebase/firestore";
+import { db } from "./firebase/firebase.js";
 
 const App = () => {
   const [tareas, setTareas] = useState([
     { id: 1, descripcion: "Lavar la loza" },
   ]);
-  const [input, setInput] = useState(null);
+  const [imprimir, setImprimir] = useState();
+
+  const [input, setInput] = useState("");
   const input1 = (evento) => {
     setInput(evento.target.value);
   };
+  const [cambio, setCambio] = useState(false);
+
+  
 
   const agregarTarea = () => {
     setTareas([
       ...tareas,
       { id: Math.floor(Math.random() * 1000), descripcion: input },
     ]);
+    setInput("");
   };
-
   const eliminarTarea = (identificacion) => {
     const nuevasTareas = tareas.filter(
       (elemento) => elemento.id !== identificacion
     );
     setTareas(nuevasTareas);
   };
+  const eliminarFirebase = async(id)=>{
+    await deleteDoc(doc(db, "productos", id));
+    setCambio(!cambio)
+  }
+
+  const añadirFirebase = async()=>{
+    const docRef = await addDoc(collection(db, "productos"), {
+      producto: input,
+    });
+    console.log("Document written with ID: ", docRef.id);
+    setCambio(!cambio)
+    setInput("")
+  }
+
+  const solicitud = async () => {
+    const individual = await getDocs(collection(db, "productos"));
+    const array = individual.docs.map((elemento) => ({
+      datos: elemento.data(),
+      id: elemento.id,
+    }));
+    setImprimir(array);
+  };
+
+  useEffect(() => {
+    solicitud();
+  }, [cambio]);
 
   return (
     <div>
       <div className="phone-1 flex justify-center items-center">
         <label className="input input-bordered flex items-center gap-2">
-          <input
-            onChange={input1}
-            type="text"
-            className="grow"
-            placeholder="Ingrese la tarea"
-          />
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              agregarTarea();
+            }}
+          >
+            <input
+              onChange={input1}
+              type="text"
+              className="grow"
+              placeholder="Ingrese la tarea"
+              value={input}
+            />       
+          </form>
         </label>
         <button onClick={agregarTarea} className="btn btn-success">
           Añadir tarea
         </button>
+        <button onClick={añadirFirebase} >Añadir a firebase</button>
       </div>
 
       <div className="flex flex-col items-center justify-center">
@@ -53,24 +96,21 @@ const App = () => {
                 }}
                 className="btn btn-circle btn-outline"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <Equis />
               </button>
             </div>
           ))}
       </div>
+      {imprimir &&
+        imprimir.map((elemento) =>
+            <div key={elemento.id}>
+              <h1 className="font-bold text-[40px]">
+                {elemento.datos.producto}
+              </h1>
+              <button onClick={()=>eliminarFirebase(elemento.id)}>Eliminar de firebase</button>
+            </div>
+          
+        )}
     </div>
   );
 };
